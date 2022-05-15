@@ -1,0 +1,16 @@
+{
+  "api" : {
+    "token": "XFeVxdEYX3PBWw0E1XJtokrvOGFFl3nL",
+    "url": "https://api.envato.com/v1"
+  },
+
+  "category": "mobile",
+  "database": {
+    "host": "127.0.0.1",
+    "user": "root",
+    "password": "",
+    "database": "goods_data",
+    "dialect" : "mysql"
+  },
+  "terms" : ["react native", "flutter", "android"]
+}
