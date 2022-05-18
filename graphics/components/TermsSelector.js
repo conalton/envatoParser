@@ -32,6 +32,8 @@ function TermsSelector({onChange}) {
     return (
 
             <AsyncSelect
+                id="selector"
+                instanceId="asda"
                 cacheOptions
                 defaultOptions
                 value={selectedValue}

@@ -1,13 +1,41 @@
+const moment = require('moment');
 const config = require('./config');
 
+const { createLogger, format, transports } = require("winston");
+
+const logLevels = {
+    fatal: 0,
+    error: 1,
+    warn: 2,
+    info: 3,
+    debug: 4,
+    trace: 5,
+};
+
+const logger = createLogger({
+    format: format.combine(
+        format.timestamp({
+            format: 'MMM-DD-YYYY HH:mm:ss'
+        }),
+        format.printf(info => `${info.level}: ${[info.timestamp]}: ${info.message}`),
+    ),
+    levels: logLevels,
+    transports: [
+        new (transports.Console)(),
+        new transports.File({
+        filename: process.cwd() + '\\logs\\parser.log',
+        timestamp: true
+    })],
+});
+
 if (!config) {
-    console.log('Config.json is empty or not found');
-    process.exit(1);
+    logger.fatal('Config.json is empty or not found');
+    return;
 }
 
 if (!config?.api.token) {
-    console.log('Api token not present in config');
-    process.exit(1);
+    logger.fatal('Api token not present in config');
+    return;
 }
 
 const {DataManager} = require('./dataManager');
@@ -18,6 +46,8 @@ DataManager.init(config.database).then((connection) => {
         var isFirst = true;
 
         const call = (page, term) => {
+            logger.info(`Parsing : page = ${page}, term = ${term}`);
+
             doApiRequest(config.api, '/discovery/search/search/item', {
                 term,
                 page,
@@ -38,11 +68,6 @@ DataManager.init(config.database).then((connection) => {
                         item.published_at = item.published_at ? new Date(item.published_at) : null;
                         item.updated_at = item.updated_at ? new Date(item.updated_at) : item.updated_at;
 
-                        /**
-                         * generate random
-                         */
-                        //item.number_of_sales += 60 + Math.round(Math.random() * 10);
-
                         await DataManager.addItem(item);
                     });
                 }
@@ -50,9 +75,11 @@ DataManager.init(config.database).then((connection) => {
                 if (isFirst && data?.aggregations?.cost) {
                     isFirst = false;
 
+                    const aggregatesKeys = ['avg', 'count', 'max', 'min', 'sum'];
                     const aggregates = {};
-                    Object.keys(data.aggregations.cost).forEach(key => {
-                        aggregates['cost_' + key] = data.aggregations.cost[key];
+                    aggregatesKeys.forEach(key => {
+                        aggregates['cost_' + key] = data.aggregations.cost[key] !== undefined
+                        && data.aggregations.cost[key] !== null ? data.aggregations.cost[key] : 0;
                     })
 
                     DataManager.addAggregate({...aggregates, date, term})
@@ -60,13 +87,12 @@ DataManager.init(config.database).then((connection) => {
 
                 if (data?.links?.next_page_url) {
                     page++;
-                    console.log(`term :${term}, perfroming page: ${page}`);
 
                     return call(page, term);
                 }
 
             }, rejectStatus => {
-                console.log(`term :${term}, perfroming page failed: ${page}`);
+                logger.error(`term :${term}, perfroming page failed: ${page}`);
 
                 if (rejectStatus?.response?.status === 429 && rejectStatus?.response?.headers?.['Retry-After']) {
                     const waitTime = rejectStatus?.response?.headers?.['Retry-After'];
@@ -76,10 +102,11 @@ DataManager.init(config.database).then((connection) => {
                             call(page, term);
                         });
 
-                        return;
                     }
                 }
-            });
+            }).catch(err => {
+                logger.error(JSON.stringify(err, Object.getOwnPropertyNames(err)));
+            })
 
         }
 
@@ -87,15 +114,30 @@ DataManager.init(config.database).then((connection) => {
     }
 
     if (Array.isArray(config.terms)) {
-        //const date = new Date('2022-05-09T00:00:00');
-        const date = (new Date()).setHours(0, 0, 0);
+        const parseFunc = () => {
+            logger.info('Start parsing...');
 
-        config.terms.forEach(async (term) => {
-            await doParse(date, term);
-        });
+            let date = (new Date()).setHours(0, 0, 0);
+            date = moment(date).utcOffset(0, true).toDate();
+
+            config.terms.forEach(async (term) => {
+                await doParse(date, term);
+            });
+
+            logger.info(`End parsing`);
+        }
+
+        //Мгновенный парсинг
+        parseFunc();
+
+        //Парсит каждые 24 часа
+        setInterval(() => {
+            parseFunc();
+        }, 24 * 60 * 60 * 1000);
+
     }
+}).catch(err => {
+    logger.error(JSON.stringify(err, Object.getOwnPropertyNames(err)));
 });
-
-
 
 

@@ -1,114 +1,173 @@
-import {Chart} from "react-google-charts";
 import dynamic from 'next/dynamic';
-import React, {useState, useEffect} from 'react';
+import React, {useState, useEffect, useRef} from 'react';
 import axios from "axios";
+import moment from "moment";
 
-export const TermsSelectorBlock = dynamic(() => import('../components/TermsSelector'));
+const TermsSelectorBlock = dynamic(() => import('../components/TermsSelector'));
+const PeriodFilter = dynamic(() => import('../components/PeriodFilter'));
+const MainDailyGraph = dynamic(() => import('../components/MainDailyGraph'));
+const AggregationsGraph = dynamic(() => import('../components/AggregationsGraph'));
+
+const styles = {
+    main: {
+        display: "flex",
+        flexBasis: "100%",
+        padding: '15px 25px'
+    },
+    leftPanel: {
+        flexBasis: '20%'
+    },
+    mb2: {
+        marginBottom: '1.5rem'
+    }
+}
+
 
 export default function Index() {
-    const mainStyle = {
-        display: "flex",
-        justifyContent: "center",
-        flexBasis: "100%"
-    }
+    const [dailyData, setDailyData] = useState();
+    const [aggregationsData, setAggregationsData] = useState();
 
-    const leftPanelStyle = {
-        flexBasis: '20%'
-    }
+    const startDate = new Date(),
+        endDate = new Date();
 
-    const chartArea = {
-        flexBasis: '80%',
-        height: '400px'
-    }
+    startDate.setHours(0, 0, 0, 0);
+    endDate.setHours(0, 0, 0, 0);
+    startDate.setDate(endDate.getDate() - 1);
 
-    const [data, setData] = useState([
-        ['Дата', 0]
-    ]);
-
-    const [options, setOptions] = useState({});
+    const [filters, setFilters] = useState({term: null, df: startDate, dt: endDate});
 
     const [aggregates, setAggregates] = useState({
         sum: 0,
         countGoods: 0
     });
 
-    const onChooseTerm = (value) => {
-        if (value?.id) {
-            axios.get('/api/getData', {
-                params: {term: value.id}
-            }).then(response => {
-                if (Array.isArray(response?.data?.rows)) {
+    useEffect(() => {
+        ReloadGraph()
+    }, [filters]);
 
-                    const ticks = new Map();
+    const ReloadGraph = () => {
+        axios.get('/api/getData', {
+            params: {
+                ...filters,
+                df: filters.df ? moment(filters.df).format('DD.MM.YYYY') : undefined,
+                dt: filters.dt ? moment(filters.dt).format('DD.MM.YYYY') : undefined
+            },
+        }).then(response => {
+            if (!response?.data?.response) {
+                setDailyData(null);
 
-                    response?.data.rows.forEach((item, key) => {
-                        if (key > 0) {
-                            item[0] = new Date(item[0]);
+                return;
+            }
 
-                            ticks.set(item[0].getTime(), item[0]);
-                        }
-                    });
+            prepareAggregtesTotal(response?.data?.aggregates);
 
-                    setOptions({
-                        title: "",
-                        isStacked: true,
-                        hAxis: {
-                            ticks: Array.from(ticks.values()),
-                            format: 'dd.MM.y',
-                            titleTextStyle: {color: "#333"}
-                        },
-                        vAxis: {minValue: 0},
-                        chartArea: {width: "80%", height: "90%"},
-                        legend: {position: "right", maxLines: 6},
-                    });
+            setAggregationsData(response?.data?.aggregates);
 
-                    setData(response.data.rows);
-                }
+            if (Array.isArray(response?.data?.rows)) {
+                setDailyData(response?.data?.rows);
+            }
 
-                if (response?.data?.aggregates) {
-                    const newState = {
-                        sum: response?.data?.aggregates.sum,
-                        countGoods: response?.data?.aggregates.count
-                    }
-
-                    setAggregates(newState);
-                }
-
-            });
-        }
-        console.log(value);
+        });
     }
 
-    const mb2 = {
-        marginBottom: '1.5rem'
+    const onChooseTerm = (value) => {
+        setFilters({
+            ...filters,
+            term: value?.id
+        });
+    }
+
+    const prepareAggregtesTotal = (data) => {
+        const newState = {
+            sum: data.length ? data.map(item => item.cost_sum).reduce((a, b) => a + b) : '--',
+            countGoods: data.length ? data.map(item => item.cost_count).reduce((a, b) => a + b) : '--',
+            cost_count_delta: data[data.length - 1]?.cost_count_delta,
+            cost_sum_delta: data[data.length - 1]?.cost_sum_delta,
+        }
+
+        setAggregates(newState);
+    }
+
+    const onChangeDf = (date) => {
+        setFilters({
+            ...filters,
+            df: new Date(date.getTime())
+        });
+    }
+
+    const onChangeDt = (date) => {
+        setFilters({
+            ...filters,
+            dt: new Date(date.getTime())
+        });
+    }
+
+    const RenderOneDayStats = () => {
+        if (!filters.df || !filters.dt || !filters.term
+            || (filters.dt.getTime() - filters.df.getTime() > 86400000)) {
+            return <div/>;
+        }
+
+        return <div>
+            <div style={styles.mb2}>
+                Прирост товаров за день:
+                <div>
+                    {aggregates?.cost_count_delta !== null && aggregates?.cost_count_delta !== undefined  ? aggregates.cost_count_delta : '--'}
+                </div>
+            </div>
+
+            <div style={styles.mb2}>
+                Прирост выручки за день:
+                <div>
+                    {aggregates?.cost_sum_delta !== null && aggregates?.cost_sum_delta !== undefined  ? aggregates.cost_sum_delta : '--'}
+                </div>
+            </div>
+        </div>
+
     }
 
     return (
-        <div style={mainStyle}>
-            <div style={leftPanelStyle}>
-                <TermsSelectorBlock onChange={onChooseTerm}/>
+        <div style={styles.main}>
+            <div style={styles.leftPanel}>
+                <div style={styles.mb2}>
+                    <TermsSelectorBlock onChange={onChooseTerm}/>
+                </div>
 
-                <div style={mb2}>
+                <div style={styles.mb2}>
+                    <PeriodFilter
+                        onChangeDf={onChangeDf}
+                        onChangeDt={onChangeDt}
+                        df={filters.df}
+                        dt={filters.dt}
+                    />
+                </div>
+
+                <div style={styles.mb2}>
                     Выручка:
                     <div>
                         {aggregates.sum}
                     </div>
                 </div>
 
-                <div style={mb2}>
+                <div style={styles.mb2}>
                     Количество товаров:
                     <div>
                         {aggregates.countGoods}
                     </div>
                 </div>
+
+                <RenderOneDayStats/>
+
             </div>
 
-            <Chart
-                style={chartArea}
-                chartType="AreaChart"
-                data={data}
-                options={options}
-            />
+            <div style={{display: 'flex', flexDirection: 'column', flexBasis: '70%'}}>
+                <div style={styles.mb2}>
+                    <MainDailyGraph rows={dailyData}/>
+                </div>
+                <AggregationsGraph rows={aggregationsData}/>
+            </div>
+
+
         </div>
     )
 }

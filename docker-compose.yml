@@ -1,0 +1,72 @@
+version: "3.9"
+networks:
+  default:
+    driver: bridge
+services:
+  db_mysql:
+    image: mariadb:10.3.34
+    restart: always
+    container_name: db_mysql
+    environment:
+      - MYSQL_DATABASE=${DB_NAME}
+      - MYSQL_USER=${DB_USER}
+      - MYSQL_PASSWORD=${DB_PASSWORD}
+      - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
+    volumes:
+      - ./database/data:/var/lib/mysql
+    expose:
+      - "3306"
+    healthcheck:
+      test: "mysql $DB_NAME -u$DB_USER -p$MYSQL_ROOT_PASSWORD -e 'SELECT 1;'"
+      interval: 3s
+      timeout: 3s
+      retries: 99
+
+  nextjs_front:
+    restart: always
+    image: node
+    container_name: nextjs_front
+    environment:
+      - API_TOKEN=${API_TOKEN}
+      - API_URL=${API_URL}
+      - CATEGORY=${CATEGORY}
+      - DB_HOST=db_mysql
+      - DB_USER=${DB_USER}
+      - DB_NAME=${DB_NAME}
+      - DB_PASSWORD=${DB_PASSWORD}
+      - DB_DIALECT=${DB_DIALECT}
+      - TERMS=${TERMS}
+    working_dir: ${FRONTEND_PATH_REMOTE}
+    volumes:
+      - "./${FRONTEND_PATH_LOCAL}:${FRONTEND_PATH_REMOTE}"
+    #docker ps - show service status
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:3000/ || exit 1"]
+      interval: 2s
+      timeout: 3s
+    ports:
+      - "3000:3000"
+    command: bash -c "npm run start"
+    depends_on:
+      - parser
+  parser:
+    restart: always
+    image: node
+    container_name: parser
+    environment:
+      - API_TOKEN=${API_TOKEN}
+      - API_URL=${API_URL}
+      - CATEGORY=${CATEGORY}
+      - DB_HOST=db_mysql
+      - DB_USER=${DB_USER}
+      - DB_NAME=${DB_NAME}
+      - DB_PASSWORD=${DB_PASSWORD}
+      - DB_DIALECT=${DB_DIALECT}
+      - TERMS=${TERMS}
+    working_dir: ${PARSER_PATH_REMOTE}
+    volumes:
+      - "./${PARSER_PATH_LOCAL}:${PARSER_PATH_REMOTE}"
+    command: bash -c "node ./app.js"
+    depends_on:
+      db_mysql:
+        condition: service_healthy

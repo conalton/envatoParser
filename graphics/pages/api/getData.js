@@ -1,97 +1,57 @@
 import {connect as dbConnection} from '/libs/dbConnection';
+import moment from "moment";
+import salesDiffs from "/sql/salesDiffs";
+import aggregates from "../../sql/aggregates";
 
-const sqlDiff = ` WITH recursive periodRanges AS (
-    select MIN(DATE) as DATE FROM goods_sales
-   union all
-   select Date + interval 1 day
-   from periodRanges
-   where DATE < (select max(DATE) as DATE FROM goods_sales))
-   
-   
-select periodRanges.date,  goods.name, goods.id,
+const getChartData = async ({term, df, dt}) => {
+    const dfTS = Math.round(df.getTime() / 1000);
+    const dtTS = Math.round(dt.getTime() / 1000);
 
-sales.number_of_sales - IFNULL((
-SELECT subsales.number_of_sales FROM goods_sales subsales
- WHERE subsales.date = sales.date - interval 1 day
- AND subsales.good_id = sales.good_id
- AND subsales.term = sales.term
-  ORDER BY sales.date DESC LIMIT 1), 0) AS number_of_sales_inc,
-  
-  
-sales.number_of_sales
+    const getStats = () => {
+        return new Promise((resolve, reject) => {
+            dbConnection().then(connection => {
+                connection.query(salesDiffs(), [dfTS, dtTS, term], function (errRows, resultRows) {
 
-from periodRanges
-JOIN goods_sales sales ON sales.date = periodRanges.date 
-JOIN goods ON goods.id = sales.good_id
-
-WHERE EXISTS (
-SELECT subsales.number_of_sales FROM goods_sales subsales
- WHERE subsales.date < sales.date
- AND subsales.good_id = sales.good_id
- AND subsales.term = sales.term)
- AND sales.term = ?
-
-ORDER BY periodRanges.date `;
-
-const sqlAggregates = `SELECT SUM(cost_count) as count, sum (cost_sum) as sum FROM goods_aggregation
-WHERE term = ? and UNIX_TIMESTAMP(date) >= ? and UNIX_TIMESTAMP(date) <= ? `;
-
-const getChartData = async (term) => {
-    return new Promise((resolve, reject) => {
-        dbConnection().then(connection => {
-
-            connection.query(sqlDiff, [term], function (err, result) {
-                if (err) {
-                    return reject({});
-                }
-
-                if (Array.isArray(result) && result.length) {
-                    const uniqueGoods = new Map();
-
-                    result.forEach(item => {
-                        uniqueGoods.set(item.id, item.name);
-                        item.date = item.date.getTime();
-                    })
-
-                    const dates = Array.from(new Set(Array.from(result.map(item => item.date))));
-                    const minDate = Math.round(Math.min.apply(null, dates) / 1000);
-                    const maxDate = Math.round(Math.max.apply(null, dates) / 1000);
-
-                    connection.query(sqlAggregates, [term, minDate, maxDate], function (err1, result1) {
-                        if (err1 || !result1.length) {
-                            return resolve({
-                                minDate, maxDate, dates
+                    connection.query(aggregates(), [dfTS, dtTS, term], function (errAggregates, resultAggregates) {
+                        if (errRows || errAggregates) {
+                            return reject({
+                                response: false,
+                                msg: 'error during query execute'
                             });
                         }
 
-                        const rows = [];
-
-                        rows.push(['Дата', ...Array.from(uniqueGoods.values())]);
-
-                        dates.forEach(date => {
-                            rows.push([date, ...result.filter(item => item.date === date).map(item => item.number_of_sales_inc)])
-                        });
+                        resultAggregates?.forEach(item => {
+                            item.date = moment(item.date).utcOffset(0, true).toDate().getTime()
+                        })
 
                         resolve({
-                            rows,
-                            aggregates: result1[0]
+                            rows: resultRows.map(item => {
+                                return {...item, date : moment(item.date).utcOffset(0, true).toDate().getTime()}
+                            }),
+                            aggregates: resultAggregates,
+                            response: true
                         });
                     });
 
-                    return;
-                }
-
-                resolve({});
+                });
             });
-        }, () => {
-            reject({});
-        }).catch(() => {
-            reject({});
         })
-    });
+    }
+
+    return getStats();
 }
 
 export default async function handler(req, res) {
-    const data = await getChartData(req.query.term);
+    const filters = {
+        term: req.query.term,
+        df: req.query.df ? moment(req.query.df, 'DD.MM.YYYY', true) : null,
+        dt: req.query.dt ? moment(req.query.dt, 'DD.MM.YYYY', true) : null,
+    }
+
+    //т.к. статистика D + 1, то добавляет 1 день
+    filters.df = filters.df.isValid() ? filters.df.utcOffset(0, true).hour(0).minute(0).second(0).millisecond(0).add(-1, 'day').toDate() : null;
+    filters.dt = filters.dt.isValid() ? filters.dt.utcOffset(0, true).hour(0).minute(0).second(0).millisecond(0).toDate() : null;
+
+    const data = await getChartData(filters);
     res.status(200).json(data);
 }

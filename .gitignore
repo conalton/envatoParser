@@ -2,3 +2,5 @@
 /.idea/
 /graphics/.idea/
 /graphics/.env
+/database/data/
+.env
