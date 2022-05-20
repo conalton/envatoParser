@@ -3,7 +3,7 @@ import {connect as dbConnection} from './dbConnection';
 const getTerms = async () => {
     return new Promise((resolve, reject) => {
         dbConnection().then(connection => {
-            connection.query('select distinct term from goods_sales', function (err, result) {
+            connection.query('select distinct term from goods_sales order by term asc', function (err, result) {
                 if (err) {
                     return reject();
                 }
