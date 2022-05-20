@@ -52,7 +52,7 @@ const Styles = {
 }
 
 const dataEmpty = [
-    ['Дата', 0],
+    ['Дата', ' '],
     [0, 0]
 ];
 

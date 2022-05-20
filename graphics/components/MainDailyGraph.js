@@ -25,7 +25,7 @@ const Styles = {
 }
 
 const dataEmpty = [
-    ['Дата', 0],
+    ['Дата', ' '],
     [0, 0]
 ];
 
@@ -74,7 +74,7 @@ const MainDailyGraph = ({rows}) => {
             }
         });
 
-        if (!uniqueDates.size || !uniqueGoods.size) {
+        if (!uniqueDates.size) {
             result.push(['Дата', '-']);
             result.push([0, 0]);
 

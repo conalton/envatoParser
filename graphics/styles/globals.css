@@ -21,3 +21,7 @@ a {
   white-space: nowrap;
   padding: 1rem;
 }
+
+div[id*="google-visualization-errors-all-"] {
+  display: none !important;
+}

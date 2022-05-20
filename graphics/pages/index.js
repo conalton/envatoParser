@@ -54,9 +54,7 @@ export default function Index() {
             },
         }).then(response => {
             if (!response?.data?.response) {
-                setDailyData(null);
-
-                return;
+                return setDailyData(null);
             }
 
             prepareAggregtesTotal(response?.data?.aggregates);
@@ -67,6 +65,14 @@ export default function Index() {
                 setDailyData(response?.data?.rows);
             }
 
+        }, rejectData => {
+            setDailyData(null);
+            prepareAggregtesTotal({});
+            setAggregationsData({});
+        }).catch(() => {
+            setDailyData(null);
+            prepareAggregtesTotal({});
+            setAggregationsData({});
         });
     }
 

@@ -2,6 +2,7 @@ import {connect as dbConnection} from '/libs/dbConnection';
 import moment from "moment";
 import salesDiffs from "/sql/salesDiffs";
 import aggregates from "../../sql/aggregates";
+import {response} from "yarn/lib/cli";
 
 const getChartData = async ({term, df, dt}) => {
     const dfTS = Math.round(df.getTime() / 1000);
@@ -9,6 +10,13 @@ const getChartData = async ({term, df, dt}) => {
 
     const getStats = () => {
         return new Promise((resolve, reject) => {
+            if (!term || !df || !dt) {
+                return resolve({
+                    response: false,
+                    msg: 'not enough parameters'
+                });
+            }
+
             dbConnection().then(connection => {
                 connection.query(salesDiffs(), [dfTS, dtTS, term], function (errRows, resultRows) {
 
@@ -26,7 +34,7 @@ const getChartData = async ({term, df, dt}) => {
 
                         resolve({
                             rows: resultRows.map(item => {
-                                return {...item, date : moment(item.date).utcOffset(0, true).toDate().getTime()}
+                                return {...item, date: moment(item.date).utcOffset(0, true).toDate().getTime()}
                             }),
                             aggregates: resultAggregates,
                             response: true
@@ -52,6 +60,11 @@ export default async function handler(req, res) {
     filters.df = filters.df.isValid() ? filters.df.utcOffset(0, true).hour(0).minute(0).second(0).millisecond(0).add(-1, 'day').toDate() : null;
     filters.dt = filters.dt.isValid() ? filters.dt.utcOffset(0, true).hour(0).minute(0).second(0).millisecond(0).toDate() : null;
 
-    const data = await getChartData(filters);
-    res.status(200).json(data);
+    try {
+        const data = await getChartData(filters);
+        res.status(200).json(data);
+    } catch (e) {
+        return res.status(500).json({response: false});
+    }
+
 }
