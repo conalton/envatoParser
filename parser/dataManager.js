@@ -15,6 +15,10 @@ const initModels = async (sequelize) => {
 
 const init = async (dbConfig) => {
     const sequelize = new Sequelize(dbConfig.database, dbConfig.user, dbConfig.password, {
+        define: {
+            collate: 'utf8mb4_unicode_ci',
+            timestamps: false
+        },
         host: dbConfig.host,
         dialect: dbConfig.dialect
     });
@@ -28,14 +32,14 @@ const DataManager = {
         await init(dbConfig);
     },
 
-    async addItem({id, date, price_cents, number_of_sales, term, url, published_at, updated_at}) {
+    async addItem({id, date, price_cents, number_of_sales, term, url, updated_at}) {
         await GoodsSales.findOrCreate({
             where: {
                 good_id : id,
                 date,
                 term
             },
-            defaults: {good_id : id, date, price_cents, number_of_sales, term, url, published_at, updated_at}
+            defaults: {good_id : id, date, price_cents, number_of_sales, term, url, updated_at}
         });
     },
 

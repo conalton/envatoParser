@@ -23,9 +23,6 @@ const init = (sequelize) => {
             type: DataTypes.DATE,
             unique: 'goods_sales_unique'
         },
-        published_at : {
-            type: DataTypes.DATE,
-        },
         updated_at : {
             type: DataTypes.DATE,
         },

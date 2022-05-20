@@ -1,32 +1,6 @@
 const moment = require('moment');
 const config = require('./config');
-
-const { createLogger, format, transports } = require("winston");
-
-const logLevels = {
-    fatal: 0,
-    error: 1,
-    warn: 2,
-    info: 3,
-    debug: 4,
-    trace: 5,
-};
-
-const logger = createLogger({
-    format: format.combine(
-        format.timestamp({
-            format: 'MMM-DD-YYYY HH:mm:ss'
-        }),
-        format.printf(info => `${info.level}: ${[info.timestamp]}: ${info.message}`),
-    ),
-    levels: logLevels,
-    transports: [
-        new (transports.Console)(),
-        new transports.File({
-        filename: process.cwd() + '\\logs\\parser.log',
-        timestamp: true
-    })],
-});
+const logger = require('./logger').default;
 
 if (!config) {
     logger.fatal('Config.json is empty or not found');
@@ -40,21 +14,30 @@ if (!config?.api.token) {
 
 const {DataManager} = require('./dataManager');
 const {doApiRequest} = require('./request');
+const {GoodsSales} = require("./models/GoodsSales");
 
 DataManager.init(config.database).then((connection) => {
-    const doParse = async (date, term) => {
+    const doParse = async (date, term, currentDay = true) => {
         var isFirst = true;
 
         const call = (page, term) => {
             logger.info(`Parsing : page = ${page}, term = ${term}`);
 
-            doApiRequest(config.api, '/discovery/search/search/item', {
+            const query = {
                 term,
                 page,
                 page_size: 100,
                 category: config.category,
-                date: 'this-day'
-            }).then(data => {
+                date: currentDay ? 'this-day' : undefined,
+                sort_by: 'updated',
+                sort_direction: 'desc'
+            };
+
+            const parseDate = (dateStr) => {
+                return new Date(moment(dateStr, "YYYY-MM-DDTHH:mm:ss [Z]").utcOffset(0, true).format('YYYY-MM-DD HH:mm:ss'))
+            }
+
+            doApiRequest(config.api, '/discovery/search/search/item', query).then(data => {
                 if (data?.matches && Array.isArray(data?.matches)) {
                     data.matches = data.matches.filter(item => item?.id);
 
@@ -63,16 +46,21 @@ DataManager.init(config.database).then((connection) => {
 
                         await DataManager.addGoodIfNotExists(item);
 
-                        item.date = date;
+                        item.date = parseDate(item?.published_at);
+                        item?.date?.setHours(0, 0, 0, 0);
                         item.term = term ? term : null;
-                        item.published_at = item.published_at ? new Date(item.published_at) : null;
-                        item.updated_at = item.updated_at ? new Date(item.updated_at) : item.updated_at;
+                        item.updated_at = item.updated_at ? parseDate(item.updated_at) : null;
+
+                        if (!item?.date) {
+                            return logger.warn('item.date is empty, item : ' + JSON.stringify(item));
+                        }
 
                         await DataManager.addItem(item);
                     });
                 }
 
-                if (isFirst && data?.aggregations?.cost) {
+                //Aggregates only for last day
+                if (isFirst && currentDay && data?.aggregations?.cost) {
                     isFirst = false;
 
                     const aggregatesKeys = ['avg', 'count', 'max', 'min', 'sum'];
@@ -96,7 +84,8 @@ DataManager.init(config.database).then((connection) => {
 
                 if (rejectStatus?.response?.status === 429 && rejectStatus?.response?.headers?.['Retry-After']) {
                     const waitTime = rejectStatus?.response?.headers?.['Retry-After'];
-                    //не более 3 часов
+
+                    //Wait no more than 3 hours
                     if (waitTime < 3 * 3600) {
                         setTimeout(waitTime * 1000, () => {
                             call(page, term);
@@ -114,23 +103,24 @@ DataManager.init(config.database).then((connection) => {
     }
 
     if (Array.isArray(config.terms)) {
-        const parseFunc = () => {
+        const parseFunc = async () => {
             logger.info('Start parsing...');
+
+            const currentDay = await GoodsSales.findOne() !== null;
 
             let date = (new Date()).setHours(0, 0, 0);
             date = moment(date).utcOffset(0, true).toDate();
 
-            config.terms.forEach(async (term) => {
-                await doParse(date, term);
+            config.terms.forEach((term) => {
+                doParse(date, term, currentDay);
             });
 
             logger.info(`End parsing`);
         }
 
-        //Мгновенный парсинг
         parseFunc();
 
-        //Парсит каждые 24 часа
+        //Parsing every 24 hours
         setInterval(() => {
             parseFunc();
         }, 24 * 60 * 60 * 1000);
