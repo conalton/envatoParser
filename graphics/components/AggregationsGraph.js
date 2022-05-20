@@ -77,7 +77,8 @@ const AggregationsGraph = ({rows}) => {
         ]);
 
         /**
-            Для "выравнивания" значений графиков на общем графике считает коэффициент между их средними значениями
+         * For more fiendly view of 2 different charts in both chart we need to find coefficient of average values of them
+         * The real values are printing in tooltips
          */
         const avgCount = rows.map(item => item.cost_count).reduce((a, b) => a + b) / rows.length;
         const avgSumm = rows.map(item => item.cost_sum).reduce((a, b) => a + b) / rows.length;

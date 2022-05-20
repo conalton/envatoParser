@@ -27,6 +27,9 @@ const init = async (dbConfig) => {
     await initModels(sequelize);
 }
 
+/**
+ * Manager of daily data models and sales history
+ */
 const DataManager = {
     async init(dbConfig) {
         await init(dbConfig);

@@ -1,5 +1,8 @@
 const { DataTypes, Model } = require('sequelize');
 
+/**
+ * Daily aggregation data
+ */
 class GoodsAggregation extends Model {
 }
 

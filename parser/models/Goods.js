@@ -1,5 +1,8 @@
 const { DataTypes, Model } = require('sequelize');
 
+/**
+ * Goods - unique goods in API
+ */
 class Goods extends Model {
 }
 

@@ -1,6 +1,9 @@
 const {Goods} = require('./Goods');
 const {DataTypes, Model} = require('sequelize');
 
+/**
+ * Daily data and history of good's sales
+ */
 class GoodsSales extends Model {
 }
 
