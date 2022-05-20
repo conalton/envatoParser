@@ -4,3 +4,4 @@
 /graphics/.env
 /database/data/
 .env
+/parser/.idea/
