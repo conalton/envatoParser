@@ -20,7 +20,7 @@ const logger = createLogger({
     transports: [
         new (transports.Console)(),
         new transports.File({
-            filename: process.cwd() + '\\logs\\parser.log',
+            filename: process.cwd() + '/logs/parser.log',
             timestamp: true
         })],
 });
