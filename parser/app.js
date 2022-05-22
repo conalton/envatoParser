@@ -38,6 +38,8 @@ DataManager.init(config.database).then((connection) => {
             }
 
             doApiRequest(config.api, '/discovery/search/search/item', query).then(data => {
+                logger.info(`Results : page = ${page}, term = ${term}, size = ${data?.matches?.length}`);
+
                 if (data?.matches && Array.isArray(data?.matches)) {
                     data.matches = data.matches.filter(item => item?.id);
 
