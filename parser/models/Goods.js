@@ -1,12 +1,24 @@
-const { DataTypes, Model } = require('sequelize');
+const {DataTypes, Model} = require('sequelize');
 
 /**
  * Goods - unique goods in API
  */
-class Goods extends Model {
+class Goods extends Model{
+    static async addGoodIfNotExists({id, name, summary, tags}) {
+        await this.findOrCreate({
+            where: {
+                id
+            },
+            defaults: {name, summary, tags, id}
+        });
+    }
 }
 
-const init = (sequelize) => {
+const define = (sequelize) => {
+    if (sequelize.models.Goods) {
+        return Goods;
+    }
+
     Goods.init({
         id: {
             type: DataTypes.BIGINT,
@@ -24,15 +36,11 @@ const init = (sequelize) => {
         },
     }, {
         tableName: 'goods',
-        sequelize : sequelize,
+        sequelize,
         timestamps: false
     });
+
+    return Goods;
 }
 
-module.exports.default = Goods;
-
-module.exports.init = (sequelize) => {
-    init(sequelize);
-};
-
-module.exports.Goods = Goods;
+module.exports.Goods = define;

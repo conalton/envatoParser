@@ -1,13 +1,26 @@
-const {Goods} = require('./Goods');
 const {DataTypes, Model} = require('sequelize');
 
 /**
  * Daily data and history of good's sales
  */
 class GoodsSales extends Model {
+    static async addItem({id, date, price_cents, number_of_sales, term, url, updated_at}) {
+        await GoodsSales.findOrCreate({
+            where: {
+                good_id: id,
+                date,
+                term
+            },
+            defaults: {good_id: id, date, price_cents, number_of_sales, term, url, updated_at}
+        });
+    }
 }
 
-const init = (sequelize) => {
+const define = (sequelize) => {
+    if (sequelize.models.GoodsSales) {
+        return GoodsSales;
+    }
+
     GoodsSales.init({
         id: {
             primaryKey: true,
@@ -17,16 +30,12 @@ const init = (sequelize) => {
         good_id: {
             type: DataTypes.BIGINT,
             unique: 'goods_sales_unique',
-            references: {
-                model: Goods,
-                key: 'id'
-            }
         },
         date: {
             type: DataTypes.DATE,
             unique: 'goods_sales_unique'
         },
-        updated_at : {
+        updated_at: {
             type: DataTypes.DATE,
         },
 
@@ -48,12 +57,8 @@ const init = (sequelize) => {
         sequelize,
         timestamps: false
     });
+
+    return GoodsSales;
 }
 
-module.exports.default = {GoodsSales};
-
-module.exports.init = (sequelize) => {
-    init(sequelize);
-};
-
-module.exports.GoodsSales = GoodsSales;
+module.exports.GoodsSales = define;

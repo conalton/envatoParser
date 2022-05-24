@@ -1,12 +1,25 @@
-const { DataTypes, Model } = require('sequelize');
+const {DataTypes, Model} = require('sequelize');
 
 /**
  * Daily aggregation data
  */
 class GoodsAggregation extends Model {
+    static async addAggregate({date, cost_avg, cost_count, cost_max, cost_min, cost_sum, term}) {
+        await GoodsAggregation.findOrCreate({
+            where: {
+                date,
+                term
+            },
+            defaults: {date, cost_avg, cost_count, cost_max, cost_min, cost_sum, term}
+        });
+    }
 }
 
-const init = (sequelize) => {
+const define = (sequelize) => {
+    if (sequelize.models.GoodsAggregation) {
+        return GoodsAggregation;
+    }
+
     GoodsAggregation.init({
         id: {
             type: DataTypes.BIGINT,
@@ -20,7 +33,7 @@ const init = (sequelize) => {
         cost_avg: {
             type: DataTypes.DOUBLE(18, 2)
         },
-        cost_count : {
+        cost_count: {
             type: DataTypes.INTEGER
         },
         cost_max: {
@@ -38,15 +51,11 @@ const init = (sequelize) => {
         },
     }, {
         tableName: 'goods_aggregation',
-        sequelize : sequelize,
+        sequelize,
         timestamps: false
     });
+
+    return GoodsAggregation;
 }
 
-module.exports.default = GoodsAggregation;
-
-module.exports.init = (sequelize) => {
-    init(sequelize);
-};
-
-module.exports.GoodsAggregation = GoodsAggregation;
+module.exports.GoodsAggregation = define;
