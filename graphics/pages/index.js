@@ -125,7 +125,7 @@ export default function Index() {
             <div style={styles.mb2}>
                 Прирост выручки за день:
                 <div>
-                    {aggregates?.cost_sum_delta !== null && aggregates?.cost_sum_delta !== undefined  ? aggregates.cost_sum_delta : '--'}
+                    {aggregates?.cost_sum_delta !== null && aggregates?.cost_sum_delta !== undefined  ? aggregates.cost_sum_delta : '--'} $
                 </div>
             </div>
         </div>
@@ -151,7 +151,7 @@ export default function Index() {
                 <div style={styles.mb2}>
                     Выручка:
                     <div>
-                        {aggregates.sum}
+                        {aggregates.sum} $
                     </div>
                 </div>
 
