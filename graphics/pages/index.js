@@ -36,10 +36,17 @@ export default function Index() {
 
     const [filters, setFilters] = useState({term: null, df: startDate, dt: endDate});
 
-    const [aggregates, setAggregates] = useState({
+    const [aggregatesDelta, setAggregatesDelta] = useState({
         sum: 0,
         countGoods: 0
     });
+
+    const [lastParsedDate, setLastParsedDate] = useState('--');
+
+    const [aggregatesPeriod, setAggregatesPeriod] = useState({
+        sum: 0,
+        count: 0
+    })
 
     useEffect(() => {
         ReloadGraph()
@@ -57,22 +64,29 @@ export default function Index() {
                 return setDailyData(null);
             }
 
-            prepareAggregtesTotal(response?.data?.aggregates);
+            prepareAggregtesDelta(response?.data?.resultLastDateAggregates);
 
             setAggregationsData(response?.data?.aggregates);
+
+            preparePeriodAggregatesData(response?.data?.aggregates);
 
             if (Array.isArray(response?.data?.rows)) {
                 setDailyData(response?.data?.rows);
             }
 
+            const date = new Date(moment(response?.data?.lastDate).utcOffset(0, true).format('YYYY-MM-DD 00:00:00+00:00'));
+            setLastParsedDate(moment(date).format('DD.MM.YYYY'));
+
         }, rejectData => {
             setDailyData(null);
-            prepareAggregtesTotal({});
+            prepareAggregtesDelta({});
             setAggregationsData({});
+            preparePeriodAggregatesData(null);
         }).catch(() => {
             setDailyData(null);
-            prepareAggregtesTotal({});
+            prepareAggregtesDelta({});
             setAggregationsData({});
+            preparePeriodAggregatesData(null);
         });
     }
 
@@ -83,15 +97,23 @@ export default function Index() {
         });
     }
 
-    const prepareAggregtesTotal = (data) => {
+    const prepareAggregtesDelta = (data) => {
         const newState = {
-            sum: data.length ? data.map(item => item.cost_sum).reduce((a, b) => a + b) : '--',
-            countGoods: data.length ? data.map(item => item.cost_count).reduce((a, b) => a + b) : '--',
-            cost_count_delta: data[data.length - 1]?.cost_count_delta,
-            cost_sum_delta: data[data.length - 1]?.cost_sum_delta,
+            sum: data.sum,
+            count: data.count,
         }
 
-        setAggregates(newState);
+        setAggregatesDelta(newState);
+    }
+
+    const preparePeriodAggregatesData = (data) => {
+        console.log(data);
+        const newState = {
+            sum: data?.map(item => item.cost_sum_delta).reduce((a, b) => a + b),
+            count: data?.map(item => item.cost_count_delta).reduce((a, b) => a + b),
+        }
+
+        setAggregatesPeriod(newState);
     }
 
     const onChangeDf = (date) => {
@@ -108,24 +130,23 @@ export default function Index() {
         });
     }
 
-    const RenderOneDayStats = () => {
-        if (!filters.df || !filters.dt || !filters.term
-            || (filters.dt.getTime() - filters.df.getTime() > 86400000)) {
+    const RenderPeriodStats = () => {
+        if (!filters.df || !filters.dt || !filters.term) {
             return <div/>;
         }
 
         return <div>
             <div style={styles.mb2}>
-                Прирост товаров за день:
+                Прирост товаров за период:
                 <div>
-                    {aggregates?.cost_count_delta !== null && aggregates?.cost_count_delta !== undefined  ? aggregates.cost_count_delta : '--'}
+                    {aggregatesPeriod?.sum >= 0 ? aggregatesPeriod?.sum : '--'}
                 </div>
             </div>
 
             <div style={styles.mb2}>
-                Прирост выручки за день:
+                Прирост выручки за период:
                 <div>
-                    {aggregates?.cost_sum_delta !== null && aggregates?.cost_sum_delta !== undefined  ? aggregates.cost_sum_delta : '--'} $
+                    {aggregatesPeriod?.count >= 0 ? aggregatesPeriod.count : '--'} $
                 </div>
             </div>
         </div>
@@ -149,20 +170,27 @@ export default function Index() {
                 </div>
 
                 <div style={styles.mb2}>
+                    Последняя дата с данными:
+                    <div>
+                        {lastParsedDate}
+                    </div>
+                </div>
+
+                <div style={styles.mb2}>
                     Выручка:
                     <div>
-                        {aggregates.sum} $
+                        {aggregatesDelta.sum} $
                     </div>
                 </div>
 
                 <div style={styles.mb2}>
                     Количество товаров:
                     <div>
-                        {aggregates.countGoods}
+                        {aggregatesDelta.count}
                     </div>
                 </div>
 
-                <RenderOneDayStats/>
+                <RenderPeriodStats/>
 
             </div>
 

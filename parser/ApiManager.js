@@ -170,21 +170,6 @@ class ApiManager {
         response = JSON.stringify(response);
         await this.dataManager.models.ResponseLogger.addItem({params, response, date});
     }
-
-    async parseAggregatesAndSaveData({term, category, date, site}, savingDate) {
-        const page = 1;
-        return this.parseItemPage({term, page, category, date, site}).then(data => {
-            this.logger.info(`Results aggregates : page = ${page}, term = ${term}`);
-
-            const aggregates = {};
-            AggregatesKeys.forEach(key => {
-                aggregates['cost_' + key] = data.aggregations.cost[key] !== undefined
-                && data.aggregations.cost[key] !== null ? data.aggregations.cost[key] : 0;
-            });
-
-            return this.dataManager.models.GoodsAggregation.addAggregate({...aggregates, date: savingDate, term})
-        });
-    }
 }
 
 module.exports.ApiManager = ApiManager;

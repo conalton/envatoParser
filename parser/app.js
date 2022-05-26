@@ -39,18 +39,9 @@ DataManagerFactory.then(DataManager => {
     const date = coldStart ? 'this-day' : undefined;
     const savingDate = Helpers.getDateWithoutTimezone();
 
-    Promise.all(config.terms.map((term) => {
+    config.terms.map((term) => {
         return ApiManager.parseAllPages({term, category: config.category, date, site: config.site}, savingDate);
-    }).concat(
-        config.terms.map(term => {
-            return ApiManager.parseAggregatesAndSaveData({
-                term,
-                category: config.category,
-                date,
-                site: config.site
-            }, savingDate);
-        })
-    )).then(() => {
+    }).then(() => {
         logger.info(`End parsing`);
     });
 

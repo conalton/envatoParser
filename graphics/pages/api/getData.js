@@ -2,7 +2,8 @@ import {connect as dbConnection} from '/libs/dbConnection';
 import moment from "moment";
 import salesDiffs from "/sql/salesDiffs";
 import aggregates from "../../sql/aggregates";
-import {response} from "yarn/lib/cli";
+import totalAggregates from "../../sql/totalAggregates";
+import lastParsedDate from "../../sql/lastParsedDate";
 
 const getChartData = async ({term, df, dt}) => {
     const dfTS = Math.round(df.getTime() / 1000);
@@ -19,25 +20,34 @@ const getChartData = async ({term, df, dt}) => {
 
             dbConnection().then(connection => {
                 connection.query(salesDiffs(), [dfTS, dtTS, term], function (errRows, resultRows) {
+                    connection.query(aggregates(), [dfTS, dtTS, term, term], function (errAggregates, resultAggregates) {
+                        connection.query(totalAggregates(), [term, dtTS], function (errLastDateAggregates, resultLastDateAggregates) {
+                            connection.query(lastParsedDate(), function (errLastParsedDate, resultLastParsedDate) {
+                                if (errRows || errAggregates || errLastDateAggregates || errLastParsedDate) {
+                                    return reject({
+                                        response: false,
+                                        msg: 'error during query execute'
+                                    });
+                                }
 
-                    connection.query(aggregates(), [dfTS, dtTS, term], function (errAggregates, resultAggregates) {
-                        if (errRows || errAggregates) {
-                            return reject({
-                                response: false,
-                                msg: 'error during query execute'
+                                resultAggregates?.forEach(item => {
+                                    item.date = moment(item.date).utcOffset(0, true).toDate().getTime()
+                                });
+
+                                resultLastDateAggregates?.forEach(item => {
+                                    item.date = moment(item.date).utcOffset(0, true).toDate().getTime()
+                                });
+
+                                resolve({
+                                    rows: resultRows.map(item => {
+                                        return {...item, date: moment(item.date).utcOffset(0, true).toDate().getTime()}
+                                    }),
+                                    aggregates: resultAggregates,
+                                    resultLastDateAggregates: resultLastDateAggregates?.[0],
+                                    response: true,
+                                    lastDate: resultLastParsedDate?.[0]?.date
+                                });
                             });
-                        }
-
-                        resultAggregates?.forEach(item => {
-                            item.date = moment(item.date).utcOffset(0, true).toDate().getTime()
-                        })
-
-                        resolve({
-                            rows: resultRows.map(item => {
-                                return {...item, date: moment(item.date).utcOffset(0, true).toDate().getTime()}
-                            }),
-                            aggregates: resultAggregates,
-                            response: true
                         });
                     });
 

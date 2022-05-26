@@ -49,7 +49,8 @@ services:
       - "80:3000"
     command: bash -c "npm run start"
     depends_on:
-      - parser
+      db_mysql:
+        condition: service_healthy
   parser:
     image: node
     container_name: parser

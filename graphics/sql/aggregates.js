@@ -1,38 +1,47 @@
-const aggregates = () => {
+export default () => {
     return `
 
 WITH recursive periodRanges AS (
-    select DATE(FROM_UNIXTIME(?) + interval 1 day) as DATE FROM dual
+    select DATE(FROM_UNIXTIME(?)) as DATE FROM dual
    union all
    select DATE(Date + interval 1 day)
    from periodRanges
    where DATE < (select DATE(FROM_UNIXTIME(?)) as DATE FROM dual))
-    select periodRanges.date, 
-    ifnull(aggregation_data.cost_count, 0) as cost_count, 
-    ifnull(aggregation_data.cost_sum, 0) / 100 as cost_sum,
+    select periodRanges.date,
+    sum(
+    (
+    case when
+    (
+    ifnull(currentStats.price_cents * currentStats.number_of_sales, 0) -
+    ifnull(prevDayStats.price_cents * prevDayStats.number_of_sales, ifnull(currentStats.price_cents * currentStats.number_of_sales, 0))
+    ) < 0 then 0
+    else 
+     (
+    ifnull(currentStats.price_cents * currentStats.number_of_sales, 0) -
+    ifnull(prevDayStats.price_cents * prevDayStats.number_of_sales, ifnull(currentStats.price_cents * currentStats.number_of_sales, 0))
+    ) end
+    ) / 100
     
-    ifnull(aggregation_data.cost_count, 0) 
-    - ifnull((select prev.cost_count 
-    from goods_aggregation prev
-     where 
-     prev.date = aggregation_data.date - interval 1 day
-     and prev.term = aggregation_data.term order by prev.date desc limit 1
-      ), ifnull(aggregation_data.cost_count, 0)) as cost_count_delta,
-      
-          (ifnull(aggregation_data.cost_sum, 0) 
-    - ifnull((select prev.cost_sum 
-    from goods_aggregation prev
-     where 
-     prev.date = aggregation_data.date - interval 1 day
-     and prev.term = aggregation_data.term order by prev.date desc limit 1
-      ), ifnull(aggregation_data.cost_sum, 0) )) / 100 as cost_sum_delta
+   ) as cost_sum_delta,
+     
+     sum(
+     case when
+    ifnull(currentStats.number_of_sales, 0) -
+    ifnull(prevDayStats.number_of_sales, ifnull(currentStats.number_of_sales, 0)) < 0 then 0 
+    else 
+    ifnull(currentStats.number_of_sales, 0) -
+    ifnull(prevDayStats.number_of_sales, ifnull(currentStats.number_of_sales, 0))
+    end
+    )
+    as cost_count_delta
     
     from periodRanges
-    left join goods_aggregation aggregation_data on aggregation_data.date = periodRanges.date
-    and aggregation_data.term = ?
-    
-    order by periodRanges.date asc
-`;
-}
+    left join goods_sales currentStats on currentStats.date = periodRanges.date
+    left join goods_sales prevDayStats on prevDayStats.date = currentStats.date - interval 1 day
+    and prevDayStats.term = currentStats.term
 
-export default aggregates;
+    where ifnull(currentStats.term, ? ) = ?
+    group by periodRanges.date
+    order by periodRanges.date asc
+`
+}
