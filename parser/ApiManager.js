@@ -1,5 +1,6 @@
 const moment = require('moment');
 const {doApiRequest} = require('./request');
+const Helpers = require('./helpers');
 
 const itemApiPage = '/discovery/search/search/item';
 const AggregatesKeys = ['avg', 'count', 'max', 'min', 'sum'];
@@ -8,12 +9,14 @@ class ApiManager {
     apiConfig;
     logger;
     dataManager;
+    fullLog;
 
-    static factory(apiConfig, logger, dataManager) {
+    static factory(apiConfig, logger, dataManager, fullLog) {
         const obj = new ApiManager();
         obj.apiConfig = apiConfig;
         obj.logger = logger;
         obj.dataManager = dataManager;
+        obj.fullLog = fullLog;
 
         return obj;
     }
@@ -22,47 +25,82 @@ class ApiManager {
         return new Date(moment(dateStr, "YYYY-MM-DDTHH:mm:ss [Z]").format('YYYY-MM-DD HH:mm:ss+00:00'));
     }
 
-    async parseItemPage({term, page, category, date}, sort_by = 'updated', sort_direction = 'desc', page_size = 100) {
+    async parseItemPage({
+                            term,
+                            page,
+                            category,
+                            date,
+                            site
+                        }, sort_by = 'updated', sort_direction = 'desc', page_size = 100) {
         const query = {
             term,
             page,
             page_size,
             category,
+            site,
             date,
             sort_by,
             sort_direction
         };
 
-        return doApiRequest(this.apiConfig, itemApiPage, query);
+        try {
+            return await doApiRequest(this.apiConfig, itemApiPage, query);
+        } catch (err) {
+            this.logger.error(JSON.stringify(err, Object.getOwnPropertyNames(err)));
+            return {};
+        }
     }
 
     async parsePageAndStoreData({
                                     term,
                                     category,
                                     date,
+                                    site,
                                     page
-                                }, sort_by = 'updated', sort_direction = 'desc', page_size = 100) {
-        return this.parseItemPage({term, page, category, date}, sort_by, sort_direction, page_size).then(data => {
+                                },
+                                savingDate,
+                                sort_by = 'updated',
+                                sort_direction = 'desc',
+                                page_size = 100
+    ) {
+        return this.parseItemPage({term, page, category, date, site}, sort_by, sort_direction, page_size).then(data => {
             this.logger.info(`Results : page = ${page}, term = ${term}, size = ${data?.matches?.length}`);
 
+            return new Promise((resolve) => {
+                this.logQuery({term, page, category, date, site, sort_by, sort_direction, page_size}, data).then(() => {
+                    resolve(data);
+                });
+            }).catch(err => {
+                this.logger.error(JSON.stringify(err, Object.getOwnPropertyNames(err)));
+                return data;
+            });
+
+        }).then(data => {
             if (data?.matches && Array.isArray(data?.matches)) {
                 data.matches = data.matches.filter(item => item?.id);
 
-                data.matches.forEach(async (item) => {
+                data.matches.forEach((item) => {
                     item.tags = item.tags && Array.isArray(item.tags) ? JSON.stringify(item.tags) : null;
 
-                    await this.dataManager.models.Goods.addGoodIfNotExists(item);
+                    try {
+                        this.dataManager.models.Goods.addGoodIfNotExists(item);
+                    } catch (e) {
+                    }
 
-                    item.date = ApiManager.parseApiDate(item?.published_at);
-                    item?.date?.setHours(0, 0, 0, 0);
+                    item.date = savingDate;
                     item.term = term ? term : null;
                     item.updated_at = item.updated_at ? ApiManager.parseApiDate(item.updated_at) : null;
+                    item.published_at = item.published_at ? ApiManager.parseApiDate(item.published_at) : null;
 
                     if (!item?.date) {
                         return this.logger.warn('item.date is empty, item : ' + JSON.stringify(item));
                     }
 
-                    await this.dataManager.models.GoodsSales.addItem(item);
+                    try {
+                        this.dataManager.models.GoodsSales.addItem(item);
+                    } catch (e) {
+                    }
+
                 });
             }
 
@@ -70,15 +108,26 @@ class ApiManager {
         });
     }
 
-    async parseAllPages({term, category, date}, sort_by = 'updated', sort_direction = 'desc', page_size = 100) {
+    async parseAllPages({
+                            term,
+                            category,
+                            date,
+                            site
+                        },
+                        savingDate,
+                        sort_by = 'updated',
+                        sort_direction = 'desc',
+                        page_size = 100
+    ) {
         return new Promise((resolve) => {
             const parseHandler = (page) => {
                 this.parsePageAndStoreData({
                     term,
                     page,
                     category,
+                    site,
                     date
-                }, sort_by, sort_direction, page_size).then(data => {
+                }, savingDate, sort_by, sort_direction, page_size).then(data => {
                     if (data?.links?.next_page_url) {
                         page++;
 
@@ -111,9 +160,20 @@ class ApiManager {
 
     }
 
-    async parseAggregatesAndSaveData({term, category, date}) {
+    async logQuery(params, response) {
+        if (!this.fullLog) {
+            return Promise.resolve();
+        }
+
+        const date = Helpers.getDateWithoutTimezone(false);
+        params = JSON.stringify(params);
+        response = JSON.stringify(response);
+        await this.dataManager.models.ResponseLogger.addItem({params, response, date});
+    }
+
+    async parseAggregatesAndSaveData({term, category, date, site}, savingDate) {
         const page = 1;
-        return this.parseItemPage({term, page, category, date}).then(data => {
+        return this.parseItemPage({term, page, category, date, site}).then(data => {
             this.logger.info(`Results aggregates : page = ${page}, term = ${term}`);
 
             const aggregates = {};
@@ -122,9 +182,7 @@ class ApiManager {
                 && data.aggregations.cost[key] !== null ? data.aggregations.cost[key] : 0;
             });
 
-            const saveDate = new Date(moment(new Date()).utcOffset(0, true).format('YYYY-MM-DD 00:00:00+00:00'))
-
-            return this.dataManager.models.GoodsAggregation.addAggregate({...aggregates, date: saveDate, term})
+            return this.dataManager.models.GoodsAggregation.addAggregate({...aggregates, date: savingDate, term})
         });
     }
 }

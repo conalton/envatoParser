@@ -4,14 +4,36 @@ const {DataTypes, Model} = require('sequelize');
  * Daily data and history of good's sales
  */
 class GoodsSales extends Model {
-    static async addItem({id, date, price_cents, number_of_sales, term, url, updated_at}) {
+    static async addItem({
+                             id,
+                             date,
+                             price_cents,
+                             number_of_sales,
+                             term,
+                             url,
+                             updated_at,
+                             published_at,
+                             author_username,
+                             author_url
+                         }) {
         await GoodsSales.findOrCreate({
             where: {
                 good_id: id,
                 date,
                 term
             },
-            defaults: {good_id: id, date, price_cents, number_of_sales, term, url, updated_at}
+            defaults: {
+                good_id: id,
+                date,
+                price_cents,
+                number_of_sales,
+                term,
+                url,
+                updated_at,
+                published_at,
+                author_username,
+                author_url
+            }
         });
     }
 }
@@ -38,7 +60,9 @@ const define = (sequelize) => {
         updated_at: {
             type: DataTypes.DATE,
         },
-
+        published_at: {
+            type: DataTypes.DATE,
+        },
         price_cents: {
             type: DataTypes.DOUBLE(18, 2)
         },
@@ -50,6 +74,12 @@ const define = (sequelize) => {
             unique: 'goods_sales_unique'
         },
         url: {
+            type: DataTypes.STRING(500)
+        },
+        author_username: {
+            type: DataTypes.STRING(500)
+        },
+        author_url: {
             type: DataTypes.STRING(500)
         }
     }, {

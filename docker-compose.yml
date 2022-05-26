@@ -21,6 +21,8 @@ services:
       interval: 3s
       timeout: 3s
       retries: 99
+    ports:
+      - "127.0.0.1:3306:3306"
   nextjs_front:
     restart: always
     image: node
@@ -49,7 +51,6 @@ services:
     depends_on:
       - parser
   parser:
-    restart: always
     image: node
     container_name: parser
     environment:
@@ -62,6 +63,8 @@ services:
       - DB_PASSWORD=${DB_PASSWORD}
       - DB_DIALECT=${DB_DIALECT}
       - TERMS=${TERMS}
+      - SITE=${SITE}
+      - LOG_QUERIES=${LOG_QUERIES}
     working_dir: ${PARSER_PATH_REMOTE}
     volumes:
       - "./${PARSER_PATH_LOCAL}:${PARSER_PATH_REMOTE}"

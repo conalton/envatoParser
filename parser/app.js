@@ -17,6 +17,7 @@ if (!Array.isArray(config.terms)) {
 }
 
 const DataManagerFactory = require('./DataManager').DataManager.factory(config.database);
+const Helpers = require('./helpers');
 
 DataManagerFactory.then(DataManager => {
     return new Promise((resolve) => {
@@ -25,16 +26,29 @@ DataManagerFactory.then(DataManager => {
         });
     });
 }).then(({coldStart, DataManager}) => {
-    const ApiManager = require('./ApiManager').ApiManager.factory(config.api, logger, DataManager);
+    const logQueries = config.logQueries !== '0';
+    console.log(`log queries : ${config.logQueries}`);
+    const ApiManager = require('./ApiManager').ApiManager.factory(
+        config.api,
+        logger,
+        DataManager,
+        logQueries
+    );
 
     logger.info('Start parsing...');
     const date = coldStart ? 'this-day' : undefined;
+    const savingDate = Helpers.getDateWithoutTimezone();
 
     Promise.all(config.terms.map((term) => {
-        return ApiManager.parseAllPages({term, category: config.category, date});
+        return ApiManager.parseAllPages({term, category: config.category, date, site: config.site}, savingDate);
     }).concat(
         config.terms.map(term => {
-            return ApiManager.parseAggregatesAndSaveData({term, category: config.category, date});
+            return ApiManager.parseAggregatesAndSaveData({
+                term,
+                category: config.category,
+                date,
+                site: config.site
+            }, savingDate);
         })
     )).then(() => {
         logger.info(`End parsing`);
@@ -43,11 +57,4 @@ DataManagerFactory.then(DataManager => {
 }).catch(err => {
     logger.error(JSON.stringify(err, Object.getOwnPropertyNames(err)));
 });
-
-//wait until next restart
-const waitMinutes = process.env.PARSING_MIN_INTERVAL || 15;
-
-setTimeout(() => {
-    console.log('restart delay');
-}, waitMinutes * 60 * 1000);
 

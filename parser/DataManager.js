@@ -2,7 +2,12 @@ const {Sequelize} = require('sequelize');
 
 class DataManager {
     sequelize;
-    models = {Goods: null, GoodsSales: null, GoodsAggregation: null};
+    models = {
+        Goods: null,
+        GoodsSales: null,
+        GoodsAggregation: null,
+        ResponseLogger : null
+    };
 
     static async factory(dbConfig) {
         const obj = new DataManager();
@@ -26,10 +31,12 @@ class DataManager {
         this.models.Goods = require('./models/Goods').Goods(this.sequelize);
         this.models.GoodsSales = require('./models/GoodsSales').GoodsSales(this.sequelize);
         this.models.GoodsAggregation = require('./models/GoodsAggregation').GoodsAggregation(this.sequelize);
+        this.models.ResponseLogger = require('./models/ResponseLogger').ResponseLogger(this.sequelize);
 
         await this.models.Goods.sync();
         await this.models.GoodsSales.sync();
         await this.models.GoodsAggregation.sync();
+        await this.models.ResponseLogger.sync();
     }
 }
 

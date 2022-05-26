@@ -6,6 +6,8 @@ const getConfig = () => {
         },
 
         "category": process.env.CATEGORY,
+        "site" : process.env.SITE,
+        "logQueries" : process.env.LOG_QUERIES,
         "database": {
             "host": process.env.DB_HOST,
             "user": process.env.DB_USER,
