@@ -7,6 +7,7 @@ export default () => {
     
     from goods_sales
     
-    where goods_sales.term = ? and DATE(FROM_UNIXTIME(?)) = goods_sales.date
+    where goods_sales.term = ? and goods_sales.date = (select sales.date from goods_sales sales 
+    where sales.date <= DATE(FROM_UNIXTIME(?)) order by sales.date desc limit 1 )
     `;
 }

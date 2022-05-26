@@ -26,6 +26,7 @@ DataManagerFactory.then(DataManager => {
         });
     });
 }).then(({coldStart, DataManager}) => {
+    coldStart  = true;
     const logQueries = config.logQueries !== '0';
     console.log(`log queries : ${config.logQueries}`);
     const ApiManager = require('./ApiManager').ApiManager.factory(
