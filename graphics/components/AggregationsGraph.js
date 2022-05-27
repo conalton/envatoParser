@@ -80,17 +80,17 @@ const AggregationsGraph = ({rows}) => {
          * For more fiendly view of 2 different charts in both chart we need to find coefficient of average values of them
          * The real values are printing in tooltips
          */
-        const avgCount = rows.map(item => item.cost_count).reduce((a, b) => a + b) / rows.length;
-        const avgSumm = rows.map(item => item.cost_sum).reduce((a, b) => a + b) / rows.length;
+        const avgCount = rows.map(item => item.cost_count_delta).reduce((a, b) => a + b) / rows.length;
+        const avgSumm = rows.map(item => item.cost_sum_delta).reduce((a, b) => a + b) / rows.length;
         const countKoef = avgSumm / avgCount;
 
         rows.forEach(item => {
             result.push([
                 new Date(item.date),
-                item.cost_count * countKoef,
-                `<div class="chart-title">Количество товаров: ${item.cost_count} </div>`,
-                item.cost_sum,
-                `<div class="chart-title">Выручка: ${item.cost_sum} </div>`,
+                item.cost_count_delta * countKoef,
+                `<div class="chart-title">Количество товаров: ${item.cost_count_delta} </div>`,
+                item.cost_sum_delta,
+                `<div class="chart-title">Выручка: ${item.cost_sum_delta} </div>`,
             ])
         });
 

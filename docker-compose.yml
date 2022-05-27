@@ -22,7 +22,7 @@ services:
       timeout: 3s
       retries: 99
     ports:
-      - "127.0.0.1:3306:3306"
+      - "3389:3306"
   nextjs_front:
     restart: always
     image: node

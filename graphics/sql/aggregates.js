@@ -38,7 +38,7 @@ WITH recursive periodRanges AS (
     from periodRanges
     left join goods_sales currentStats on currentStats.date = periodRanges.date
     left join goods_sales prevDayStats on prevDayStats.date = currentStats.date - interval 1 day
-    and prevDayStats.term = currentStats.term
+    and prevDayStats.term = currentStats.term AND prevDayStats.good_id = currentStats.good_id
 
     where ifnull(currentStats.term, ? ) = ?
     group by periodRanges.date

@@ -64,7 +64,7 @@ const define = (sequelize) => {
             type: DataTypes.DATE,
         },
         price_cents: {
-            type: DataTypes.DOUBLE(18, 2)
+            type: DataTypes.INTEGER
         },
         number_of_sales: {
             type: DataTypes.INTEGER,
@@ -85,7 +85,21 @@ const define = (sequelize) => {
     }, {
         tableName: 'goods_sales',
         sequelize,
-        timestamps: false
+        timestamps: false,
+        indexes:[
+            {
+                unique: false,
+                fields:['good_id']
+            },
+            {
+                unique: false,
+                fields:['date']
+            },
+            {
+                unique: false,
+                fields:['term']
+            },
+        ]
     });
 
     return GoodsSales;

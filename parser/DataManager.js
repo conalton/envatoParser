@@ -17,7 +17,17 @@ class DataManager {
                 timestamps: false
             },
             host: dbConfig.host,
-            dialect: dbConfig.dialect
+            dialect: dbConfig.dialect,
+            dialectOptions: {
+                connectTimeout: 60000,
+                timeout: 60000,
+            },
+            pool: {
+                max: 15,
+                min: 0,
+                idle: 10000,
+                idleTimeout : 0
+            },
         });
 
         await obj.sequelize.authenticate();

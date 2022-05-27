@@ -76,35 +76,35 @@ class ApiManager {
             });
 
         }).then(data => {
-            if (data?.matches && Array.isArray(data?.matches)) {
+            if (!data?.matches || !Array.isArray(data?.matches)) {
+                return Promise.resolve(data);
+            }
+
+            return new Promise((resolve) => {
                 data.matches = data.matches.filter(item => item?.id);
 
                 data.matches.forEach((item) => {
                     item.tags = item.tags && Array.isArray(item.tags) ? JSON.stringify(item.tags) : null;
 
-                    try {
-                        this.dataManager.models.Goods.addGoodIfNotExists(item);
-                    } catch (e) {
-                    }
+                    this.dataManager.models.Goods.addGoodIfNotExists(item).then(() => {
+                        item.date = savingDate;
+                        item.term = term ? term : null;
+                        item.updated_at = item.updated_at ? ApiManager.parseApiDate(item.updated_at) : null;
+                        item.published_at = item.published_at ? ApiManager.parseApiDate(item.published_at) : null;
 
-                    item.date = savingDate;
-                    item.term = term ? term : null;
-                    item.updated_at = item.updated_at ? ApiManager.parseApiDate(item.updated_at) : null;
-                    item.published_at = item.published_at ? ApiManager.parseApiDate(item.published_at) : null;
+                        if (!item?.date) {
+                            return this.logger.warn('item.date is empty, item : ' + JSON.stringify(item));
+                        }
 
-                    if (!item?.date) {
-                        return this.logger.warn('item.date is empty, item : ' + JSON.stringify(item));
-                    }
-
-                    try {
-                        this.dataManager.models.GoodsSales.addItem(item);
-                    } catch (e) {
-                    }
+                        return this.dataManager.models.GoodsSales.addItem(item);
+                    }).then(() => {
+                        resolve(data);
+                    }).catch(err => {
+                        this.logger.error(JSON.stringify(err, Object.getOwnPropertyNames(err)));
+                    });
 
                 });
-            }
-
-            return data;
+            })
         });
     }
 
@@ -119,7 +119,7 @@ class ApiManager {
                         sort_direction = 'desc',
                         page_size = 100
     ) {
-        return new Promise((resolve) => {
+        return new Promise((resolve, reject) => {
             const parseHandler = (page) => {
                 this.parsePageAndStoreData({
                     term,
@@ -131,7 +131,7 @@ class ApiManager {
                     if (data?.links?.next_page_url) {
                         page++;
 
-                        return parseHandler();
+                        return parseHandler(page);
                     }
 
                     resolve();
@@ -147,10 +147,15 @@ class ApiManager {
                                 parseHandler(page);
                             });
 
+                            return;
                         }
+
+                        reject();
                     }
                 }).catch(err => {
                     this.logger.error(JSON.stringify(err, Object.getOwnPropertyNames(err)));
+
+                    reject(err);
                 });
 
             }

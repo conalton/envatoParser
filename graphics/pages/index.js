@@ -107,7 +107,7 @@ export default function Index() {
     }
 
     const preparePeriodAggregatesData = (data) => {
-        console.log(data);
+
         const newState = {
             sum: data?.map(item => item.cost_sum_delta).reduce((a, b) => a + b),
             count: data?.map(item => item.cost_count_delta).reduce((a, b) => a + b),

@@ -37,14 +37,14 @@ DataManagerFactory.then(DataManager => {
     );
 
     logger.info('Start parsing...');
-    const date = coldStart ? 'this-day' : undefined;
+    const date = coldStart ? undefined : 'this-day';
     const savingDate = Helpers.getDateWithoutTimezone();
 
-    config.terms.map((term) => {
+    Promise.all(config.terms.map((term) => {
         return ApiManager.parseAllPages({term, category: config.category, date, site: config.site}, savingDate);
-    }).then(() => {
+    })).then(() => {
         logger.info(`End parsing`);
-    });
+    })
 
 }).catch(err => {
     logger.error(JSON.stringify(err, Object.getOwnPropertyNames(err)));
