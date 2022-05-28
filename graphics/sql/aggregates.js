@@ -1,47 +1,25 @@
 export default () => {
     return `
 
-WITH recursive periodRanges AS (
-    select DATE(FROM_UNIXTIME(?)) as DATE FROM dual
-   union all
-   select DATE(Date + interval 1 day)
-   from periodRanges
-   where DATE < (select DATE(FROM_UNIXTIME(?)) as DATE FROM dual))
-    select periodRanges.date,
-    sum(
-    (
-    case when
-    (
-    ifnull(currentStats.price_cents * currentStats.number_of_sales, 0) -
-    ifnull(prevDayStats.price_cents * prevDayStats.number_of_sales, ifnull(currentStats.price_cents * currentStats.number_of_sales, 0))
-    ) < 0 then 0
-    else 
-     (
-    ifnull(currentStats.price_cents * currentStats.number_of_sales, 0) -
-    ifnull(prevDayStats.price_cents * prevDayStats.number_of_sales, ifnull(currentStats.price_cents * currentStats.number_of_sales, 0))
-    ) end
-    ) / 100
-    
-   ) as cost_sum_delta,
-     
-     sum(
-     case when
-    ifnull(currentStats.number_of_sales, 0) -
-    ifnull(prevDayStats.number_of_sales, ifnull(currentStats.number_of_sales, 0)) < 0 then 0 
-    else 
-    ifnull(currentStats.number_of_sales, 0) -
-    ifnull(prevDayStats.number_of_sales, ifnull(currentStats.number_of_sales, 0))
-    end
-    )
-    as cost_count_delta
-    
-    from periodRanges
-    left join goods_sales currentStats on currentStats.date = periodRanges.date
-    left join goods_sales prevDayStats on prevDayStats.date = currentStats.date - interval 1 day
-    and prevDayStats.term = currentStats.term AND prevDayStats.good_id = currentStats.good_id
+SELECT 
 
-    where ifnull(currentStats.term, ? ) = ?
-    group by periodRanges.date
-    order by periodRanges.date asc
+currentDay.date,
+
+sum(ifnull(currentDay.price_cents * currentDay.number_of_sales - prevDay.price_cents * prevDay.number_of_sales, 0) / 100) AS cost_sum_delta,
+sum(ifnull(currentDay.number_of_sales - prevDay.number_of_sales, 0))  AS cost_count_delta
+
+FROM
+goods_sales currentDay
+LEFT JOIN goods_sales prevDay ON prevDay.good_id = currentDay.good_id
+AND prevDay.term = currentDay.term
+AND prevDay.date = currentDay.date - interval 1 day
+
+WHERE currentDay.term = ?
+AND currentDay.date >= DATE(FROM_UNIXTIME(?))
+AND currentDay.date <= DATE(FROM_UNIXTIME(?))
+
+GROUP BY currentDay.date
+ORDER BY currentDay.date
+
 `
 }

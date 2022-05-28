@@ -16,11 +16,11 @@ const optionsDefault = {
         }
     },
     chartArea: {width: "80%", height: "90%"},
-    legend: {position: "right", maxLines: 6},
+    legend: {position: "bottom", maxLines: 15},
 };
 
 const Styles = {
-    flexBasis: '80%',
+    flexBasis: '95%',
     height: '400px'
 }
 
@@ -35,14 +35,16 @@ const MainDailyGraph = ({rows}) => {
 
     useEffect(() => {
         if (!Array.isArray(rows) || !rows?.length) {
-           return setData(dataEmpty);
+            return setData(dataEmpty);
         }
+        console.log('rendering chart..');
 
         const uniqueGoods = new Map();
         const result = [];
         const uniqueDates = new Set();
+        const startTime = performance.now();
 
-        const Draw = () =>{
+        const Draw = () => {
             const ticks = new Map();
 
             result?.forEach((item, key) => {
@@ -66,13 +68,11 @@ const MainDailyGraph = ({rows}) => {
 
         rows.forEach(item => {
             uniqueDates.add(item.date);
-        })
 
-        rows.forEach(item => {
             if (item.id) {
                 uniqueGoods.set(item.id, item.name);
             }
-        });
+        })
 
         if (!uniqueDates.size) {
             result.push(['Дата', '-']);
@@ -85,17 +85,19 @@ const MainDailyGraph = ({rows}) => {
             'Дата', ...Array.from(uniqueGoods.values())
         ]);
 
+        const uniqueGoodsArray = Array.from(uniqueGoods.keys());
+
         Array.from(uniqueDates.values()).forEach(date => {
             const dateData = [date];
 
-            Array.from(uniqueGoods.keys()).forEach(goodId => {
+            uniqueGoodsArray.forEach(goodId => {
                 let statsData = rows.find(x => x.id === goodId && x.date === date);
 
                 if (statsData === undefined) {
                     return dateData.push(0);
                 }
 
-                return dateData.push(statsData.number_of_sales_inc);
+                dateData.push(statsData.number_of_sales_inc < 0 ? 0 : statsData.number_of_sales_inc);
             });
 
             result.push(dateData);
@@ -103,6 +105,8 @@ const MainDailyGraph = ({rows}) => {
         });
 
         Draw();
+
+        console.log('took:', performance.now() - startTime, 'ms');
 
     }, [rows]);
 

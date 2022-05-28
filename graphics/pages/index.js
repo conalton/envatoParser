@@ -38,14 +38,16 @@ export default function Index() {
 
     const [aggregatesDelta, setAggregatesDelta] = useState({
         sum: 0,
-        countGoods: 0
+        countGoods: 0,
+        uniqueGoods : 0
     });
 
     const [lastParsedDate, setLastParsedDate] = useState('--');
 
     const [aggregatesPeriod, setAggregatesPeriod] = useState({
         sum: 0,
-        count: 0
+        count: 0,
+        countUnique : 0
     })
 
     useEffect(() => {
@@ -68,14 +70,13 @@ export default function Index() {
 
             setAggregationsData(response?.data?.aggregates);
 
-            preparePeriodAggregatesData(response?.data?.aggregates);
+            preparePeriodAggregatesData(response?.data?.aggregates, response?.data?.resultCountUnique);
 
             if (Array.isArray(response?.data?.rows)) {
                 setDailyData(response?.data?.rows);
             }
 
-            const date = new Date(moment(response?.data?.lastDate).utcOffset(0, true).format('YYYY-MM-DD 00:00:00+00:00'));
-            setLastParsedDate(moment(date).format('DD.MM.YYYY'));
+            setLastParsedDate(response?.data?.lastDate);
 
         }, rejectData => {
             setDailyData(null);
@@ -101,16 +102,18 @@ export default function Index() {
         const newState = {
             sum: data.sum,
             count: data.count,
+            uniqueGoods : data.uniqueGoods
         }
 
         setAggregatesDelta(newState);
     }
 
-    const preparePeriodAggregatesData = (data) => {
+    const preparePeriodAggregatesData = (data, uniqueData) => {
 
         const newState = {
             sum: data?.map(item => item.cost_sum_delta).reduce((a, b) => a + b),
             count: data?.map(item => item.cost_count_delta).reduce((a, b) => a + b),
+            countUnique : uniqueData?.countUnique
         }
 
         setAggregatesPeriod(newState);
@@ -137,16 +140,23 @@ export default function Index() {
 
         return <div>
             <div style={styles.mb2}>
-                Прирост товаров за период:
+                Новых товаров за период:
                 <div>
-                    {aggregatesPeriod?.sum >= 0 ? aggregatesPeriod?.sum : '--'}
+                    {aggregatesPeriod?.countUnique >= 0 ? aggregatesPeriod?.countUnique : '--'}
+                </div>
+            </div>
+
+            <div style={styles.mb2}>
+                Прирост проданных товаров за период:
+                <div>
+                    {aggregatesPeriod?.count >= 0 ? aggregatesPeriod?.count : '--'}
                 </div>
             </div>
 
             <div style={styles.mb2}>
                 Прирост выручки за период:
                 <div>
-                    {aggregatesPeriod?.count >= 0 ? aggregatesPeriod.count : '--'} $
+                    {aggregatesPeriod?.sum >= 0 ? aggregatesPeriod.sum : '--'} $
                 </div>
             </div>
         </div>
@@ -177,16 +187,23 @@ export default function Index() {
                 </div>
 
                 <div style={styles.mb2}>
-                    Выручка:
+                    Всего выручка:
                     <div>
                         {aggregatesDelta.sum} $
                     </div>
                 </div>
 
                 <div style={styles.mb2}>
-                    Количество товаров:
+                    Всего проданных товаров:
                     <div>
                         {aggregatesDelta.count}
+                    </div>
+                </div>
+
+                <div style={styles.mb2}>
+                    Всего уникальных товаров:
+                    <div>
+                        {aggregatesDelta.uniqueGoods}
                     </div>
                 </div>
 

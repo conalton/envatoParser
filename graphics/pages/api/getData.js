@@ -1,9 +1,10 @@
 import {connect as dbConnection} from '/libs/dbConnection';
 import moment from "moment";
-import salesDiffs from "/sql/salesDiffs";
+import salesDiffs from "../../sql/salesDiffs";
 import aggregates from "../../sql/aggregates";
 import totalAggregates from "../../sql/totalAggregates";
 import lastParsedDate from "../../sql/lastParsedDate";
+import countUnique from "../../sql/countUnique";
 
 const getChartData = async ({term, df, dt}) => {
     const dfTS = Math.round(df.getTime() / 1000);
@@ -18,34 +19,44 @@ const getChartData = async ({term, df, dt}) => {
                 });
             }
 
+            const normalizedDfTS = dfTS + 86400;
+
             dbConnection().then(connection => {
                 connection.query(salesDiffs(), [dfTS, dtTS, term], function (errRows, resultRows) {
-                    connection.query(aggregates(), [dfTS, dtTS, term, term], function (errAggregates, resultAggregates) {
+                    connection.query(aggregates(), [term, dfTS, dtTS], function (errAggregates, resultAggregates) {
                         connection.query(totalAggregates(), [term, dtTS], function (errLastDateAggregates, resultLastDateAggregates) {
                             connection.query(lastParsedDate(), function (errLastParsedDate, resultLastParsedDate) {
-                                if (errRows || errAggregates || errLastDateAggregates || errLastParsedDate) {
-                                    return reject({
-                                        response: false,
-                                        msg: 'error during query execute'
+                                connection.query(countUnique(), [normalizedDfTS, dtTS, term, normalizedDfTS], function (errCountUnique, resultCountUnique) {
+                                    if (errRows || errAggregates || errLastDateAggregates || errLastParsedDate || errCountUnique) {
+                                        console.error(errRows, errAggregates, errLastDateAggregates, errLastParsedDate, errCountUnique);
+
+                                        return reject({
+                                            response: false,
+                                            msg: 'error during query execute'
+                                        });
+                                    }
+
+                                    resultAggregates?.forEach(item => {
+                                        item.date = moment(item.date).utcOffset(0, true).toDate().getTime()
                                     });
-                                }
 
-                                resultAggregates?.forEach(item => {
-                                    item.date = moment(item.date).utcOffset(0, true).toDate().getTime()
-                                });
+                                    resultLastDateAggregates?.forEach(item => {
+                                        item.date = moment(item.date).utcOffset(0, true).toDate().getTime()
+                                    });
 
-                                resultLastDateAggregates?.forEach(item => {
-                                    item.date = moment(item.date).utcOffset(0, true).toDate().getTime()
-                                });
-
-                                resolve({
-                                    rows: resultRows.map(item => {
-                                        return {...item, date: moment(item.date).utcOffset(0, true).toDate().getTime()}
-                                    }),
-                                    aggregates: resultAggregates,
-                                    resultLastDateAggregates: resultLastDateAggregates?.[0],
-                                    response: true,
-                                    lastDate: resultLastParsedDate?.[0]?.date
+                                    resolve({
+                                        rows: resultRows.map(item => {
+                                            return {
+                                                ...item,
+                                                date: moment(item.date).utcOffset(0, true).toDate().getTime()
+                                            }
+                                        }),
+                                        aggregates: resultAggregates,
+                                        resultLastDateAggregates: resultLastDateAggregates?.[0],
+                                        resultCountUnique: resultCountUnique?.[0],
+                                        response: true,
+                                        lastDate: moment(resultLastParsedDate?.[0]?.date).format('DD.MM.YYYY')
+                                    });
                                 });
                             });
                         });
@@ -74,6 +85,7 @@ export default async function handler(req, res) {
         const data = await getChartData(filters);
         res.status(200).json(data);
     } catch (e) {
+        console.error(e);
         return res.status(500).json({response: false});
     }
 
