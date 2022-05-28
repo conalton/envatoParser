@@ -140,7 +140,7 @@ export default function Index() {
 
         return <div>
             <div style={styles.mb2}>
-                Новых товаров за период:
+                Новых уникальных товаров за период:
                 <div>
                     {aggregatesPeriod?.countUnique >= 0 ? aggregatesPeriod?.countUnique : '--'}
                 </div>
