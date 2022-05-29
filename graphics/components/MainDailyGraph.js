@@ -16,7 +16,7 @@ const optionsDefault = {
         }
     },
     chartArea: {width: "80%", height: "90%"},
-    legend: {position: "bottom", maxLines: 15},
+    legend: {position: "right", maxLines: 15},
 };
 
 const Styles = {

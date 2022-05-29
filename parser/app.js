@@ -19,7 +19,7 @@ if (!Array.isArray(config.terms)) {
 const DataManagerFactory = require('./DataManager').DataManager.factory(config.database);
 const Helpers = require('./helpers');
 
-DataManagerFactory.then(({DataManager}) => {
+DataManagerFactory.then(DataManager => {
     const logQueries = config.logQueries !== '0';
     console.log(`log queries : ${config.logQueries}`);
     const ApiManager = require('./ApiManager').ApiManager.factory(

@@ -1,6 +1,6 @@
 export default () => {
     return `
-    SELECT count(sales.good_id) AS countUnique FROM
+    SELECT count(DISTINCT sales.good_id) AS countUnique FROM
 goods_sales sales
 WHERE sales.date >= DATE(FROM_UNIXTIME(?)) AND sales.date <= DATE(FROM_UNIXTIME(?))
 and sales.term = ?
