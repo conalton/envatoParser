@@ -10,13 +10,15 @@ class ApiManager {
     logger;
     dataManager;
     fullLog;
+    parserSettings;
 
-    static factory(apiConfig, logger, dataManager, fullLog) {
+    static factory(apiConfig, logger, dataManager, fullLog, parserSettings) {
         const obj = new ApiManager();
         obj.apiConfig = apiConfig;
         obj.logger = logger;
         obj.dataManager = dataManager;
         obj.fullLog = fullLog;
+        obj.parserSettings = parserSettings;
 
         return obj;
     }
@@ -80,13 +82,19 @@ class ApiManager {
                 return Promise.resolve(data);
             }
 
-            return new Promise((resolve) => {
+            return new Promise((resolve, reject) => {
                 data.matches = data.matches.filter(item => item?.id);
 
                 data.matches.forEach((item) => {
                     item.tags = item.tags && Array.isArray(item.tags) ? JSON.stringify(item.tags) : null;
 
                     this.dataManager.models.Goods.addGoodIfNotExists(item).then(() => {
+                        if (this.parserSettings.ignorePriceMoreThan !== undefined
+                            && item.price_cents > this.parserSettings.ignorePriceMoreThan * 100) {
+                            this.logger.warn(`ignoring price more than ${this.parserSettings.ignorePriceMoreThan} $ for good_id = ${item.id}, price_value = ${item.price_cents}`);
+                            return Promise.resolve(data);
+                        }
+
                         item.date = savingDate;
                         item.term = term ? term : null;
                         item.updated_at = item.updated_at ? ApiManager.parseApiDate(item.updated_at) : null;
@@ -101,6 +109,8 @@ class ApiManager {
                         resolve(data);
                     }).catch(err => {
                         this.logger.error(JSON.stringify(err, Object.getOwnPropertyNames(err)));
+
+                        reject(err);
                     });
 
                 });

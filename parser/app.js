@@ -19,29 +19,22 @@ if (!Array.isArray(config.terms)) {
 const DataManagerFactory = require('./DataManager').DataManager.factory(config.database);
 const Helpers = require('./helpers');
 
-DataManagerFactory.then(DataManager => {
-    return new Promise((resolve) => {
-        DataManager.models.GoodsSales.findOne().then(coldStart => {
-            resolve({coldStart, DataManager});
-        });
-    });
-}).then(({coldStart, DataManager}) => {
-    coldStart  = true;
+DataManagerFactory.then(({DataManager}) => {
     const logQueries = config.logQueries !== '0';
     console.log(`log queries : ${config.logQueries}`);
     const ApiManager = require('./ApiManager').ApiManager.factory(
         config.api,
         logger,
         DataManager,
-        logQueries
+        logQueries,
+        config.parserSettings
     );
 
     logger.info('Start parsing...');
-    const date = coldStart ? undefined : 'this-day';
     const savingDate = Helpers.getDateWithoutTimezone();
 
     Promise.all(config.terms.map((term) => {
-        return ApiManager.parseAllPages({term, category: config.category, date, site: config.site}, savingDate);
+        return ApiManager.parseAllPages({term, category: config.category, date : undefined, site: config.site}, savingDate);
     })).then(() => {
         logger.info(`End parsing`);
     })

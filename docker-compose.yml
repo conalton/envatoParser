@@ -66,6 +66,7 @@ services:
       - TERMS=${TERMS}
       - SITE=${SITE}
       - LOG_QUERIES=${LOG_QUERIES}
+      - IGNORE_PRICE_MORE_THAN=${IGNORE_PRICE_MORE_THAN}
     working_dir: ${PARSER_PATH_REMOTE}
     volumes:
       - "./${PARSER_PATH_LOCAL}:${PARSER_PATH_REMOTE}"
