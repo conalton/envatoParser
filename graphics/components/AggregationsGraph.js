@@ -70,9 +70,9 @@ const AggregationsGraph = ({rows}) => {
 
         result.push([
             'Дата',
-            'Количество товаров',
+            'Продаж',
             {role: "tooltip", type: "string", p: {html: true}},
-            'Выручка',
+            'GMV',
             {role: "tooltip", type: "string", p: {html: true}},
         ]);
 
