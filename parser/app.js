@@ -35,17 +35,28 @@ DataManagerFactory.then(DataManager => {
         const savingDate = Helpers.getDateWithoutTimezone();
 
         Promise.all(config.terms.map((term) => {
-            return ApiManager.parseAllPages({term, category: config.category, date : undefined, site: config.site}, savingDate);
+            return ApiManager.parseAllPages({
+                term,
+                category: config.category,
+                date: undefined,
+                site: config.site
+            }, savingDate);
         })).then(() => {
             logger.info(`End parsing`);
         })
     }
 
-    setInterval(() => {
-        parseHandler();
-    }, 86400000);
+    const express = require('express');
+    const app = express();
 
-    parseHandler();
+    app.get('/doParse', (req, res) => {
+        parseHandler();
+        res.send('parsing started');
+    });
+
+    app.listen(10500, () => {
+        console.log(`web server started`);
+    });
 
 }).catch(err => {
     logger.error(JSON.stringify(err, Object.getOwnPropertyNames(err)));

@@ -69,6 +69,8 @@ services:
       - LOG_QUERIES=${LOG_QUERIES}
       - IGNORE_PRICE_MORE_THAN=${IGNORE_PRICE_MORE_THAN}
     working_dir: ${PARSER_PATH_REMOTE}
+    ports:
+    - "127.0.0.1:10500:10500"
     volumes:
       - "./${PARSER_PATH_LOCAL}:${PARSER_PATH_REMOTE}"
     command: bash -c "node ./app.js"

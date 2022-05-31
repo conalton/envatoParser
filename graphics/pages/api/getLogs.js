@@ -2,7 +2,7 @@ const fs = require('fs');
 const path = require('path');
 
 export default async function handler(req, res) {
-    const logPath = path.resolve(process.cwd(), '../parser/logs/parser.log');
+    const logPath = path.resolve(process.cwd(), 'parser/logs/parser.log');
     if (!fs.existsSync(logPath)) {
         res.writeHead(200, {
             'Content-Type' : 'text/plain'

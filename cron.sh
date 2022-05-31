@@ -1,1 +1,1 @@
-docker-compose run parser -T
+curl -s http://localhost:10500/doParse

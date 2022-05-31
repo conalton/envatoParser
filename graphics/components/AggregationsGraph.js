@@ -88,9 +88,9 @@ const AggregationsGraph = ({rows}) => {
             result.push([
                 new Date(item.date),
                 item.cost_count_delta * countKoef,
-                `<div class="chart-title">Количество товаров: ${item.cost_count_delta} </div>`,
+                `<div class="chart-title">Продаж: ${item.cost_count_delta} </div>`,
                 item.cost_sum_delta,
-                `<div class="chart-title">Выручка: ${item.cost_sum_delta} </div>`,
+                `<div class="chart-title">GMV: ${item.cost_sum_delta} </div>`,
             ])
         });
 
