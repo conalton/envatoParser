@@ -53,6 +53,7 @@ services:
         condition: service_healthy
   parser:
     image: node
+    restart: always
     container_name: parser
     environment:
       - API_TOKEN=${API_TOKEN}

@@ -109,6 +109,7 @@ class ApiManager {
                         resolve(data);
                     }).catch(err => {
                         this.logger.error(JSON.stringify(err, Object.getOwnPropertyNames(err)));
+                        this.logger.warn('error data: ' + (data !== undefined ? JSON.stringify(data) : ''));
 
                         reject(err);
                     });
@@ -149,7 +150,7 @@ class ApiManager {
                 }, rejectStatus => {
                     if (rejectStatus?.response?.status === 429 && rejectStatus?.response?.headers?.['Retry-After']) {
                         const waitTime = rejectStatus?.response?.headers?.['Retry-After'];
-                        this.logger.warn(`429 response received, time : waitTime`);
+                        this.logger.warn(`429 response code received, time : waitTime`);
 
                         //Wait no more than 3 hours
                         if (waitTime < 3 * 3600) {
@@ -159,9 +160,12 @@ class ApiManager {
 
                             return;
                         }
-
-                        reject();
                     }
+
+                    this.logger.error(`Unhandled error in server response. Response : ` + JSON.stringify(rejectStatus, Object.getOwnPropertyNames(rejectStatus)));
+
+                    reject();
+
                 }).catch(err => {
                     this.logger.error(JSON.stringify(err, Object.getOwnPropertyNames(err)));
 

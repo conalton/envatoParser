@@ -39,7 +39,7 @@ export default function Index() {
     const [aggregatesDelta, setAggregatesDelta] = useState({
         sum: 0,
         countGoods: 0,
-        uniqueGoods : 0
+        uniqueGoods: 0
     });
 
     const [lastParsedDate, setLastParsedDate] = useState('--');
@@ -47,7 +47,7 @@ export default function Index() {
     const [aggregatesPeriod, setAggregatesPeriod] = useState({
         sum: 0,
         count: 0,
-        countUnique : 0
+        countUnique: 0
     })
 
     useEffect(() => {
@@ -102,7 +102,7 @@ export default function Index() {
         const newState = {
             sum: data.sum,
             count: data.count,
-            uniqueGoods : data.uniqueGoods
+            uniqueGoods: data.uniqueGoods
         }
 
         setAggregatesDelta(newState);
@@ -113,7 +113,7 @@ export default function Index() {
         const newState = {
             sum: data?.map(item => item.cost_sum_delta).reduce((a, b) => a + b),
             count: data?.map(item => item.cost_count_delta).reduce((a, b) => a + b),
-            countUnique : uniqueData?.countUnique
+            countUnique: uniqueData?.countUnique
         }
 
         setAggregatesPeriod(newState);
@@ -147,14 +147,14 @@ export default function Index() {
             </div>
 
             <div style={styles.mb2}>
-                Прирост проданных товаров за период:
+                Прирост продаж за период:
                 <div>
                     {aggregatesPeriod?.count >= 0 ? aggregatesPeriod?.count : '--'}
                 </div>
             </div>
 
             <div style={styles.mb2}>
-                Прирост выручки за период:
+                Прирост GMV за период:
                 <div>
                     {aggregatesPeriod?.sum >= 0 ? aggregatesPeriod.sum : '--'} $
                 </div>
@@ -187,14 +187,14 @@ export default function Index() {
                 </div>
 
                 <div style={styles.mb2}>
-                    Всего выручка:
+                    GMV за все время:
                     <div>
                         {aggregatesDelta.sum} $
                     </div>
                 </div>
 
                 <div style={styles.mb2}>
-                    Всего проданных товаров:
+                    Продаж за все время:
                     <div>
                         {aggregatesDelta.count}
                     </div>

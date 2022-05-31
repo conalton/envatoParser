@@ -30,14 +30,22 @@ DataManagerFactory.then(DataManager => {
         config.parserSettings
     );
 
-    logger.info('Start parsing...');
-    const savingDate = Helpers.getDateWithoutTimezone();
+    const parseHandler = () => {
+        logger.info('Start parsing...');
+        const savingDate = Helpers.getDateWithoutTimezone();
 
-    Promise.all(config.terms.map((term) => {
-        return ApiManager.parseAllPages({term, category: config.category, date : undefined, site: config.site}, savingDate);
-    })).then(() => {
-        logger.info(`End parsing`);
-    })
+        Promise.all(config.terms.map((term) => {
+            return ApiManager.parseAllPages({term, category: config.category, date : undefined, site: config.site}, savingDate);
+        })).then(() => {
+            logger.info(`End parsing`);
+        })
+    }
+
+    setInterval(() => {
+        parseHandler();
+    }, 86400000);
+
+    parseHandler();
 
 }).catch(err => {
     logger.error(JSON.stringify(err, Object.getOwnPropertyNames(err)));

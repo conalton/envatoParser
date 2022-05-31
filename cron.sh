@@ -1,1 +1,1 @@
-docker-compose run parser
+docker-compose run parser -T
